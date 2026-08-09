@@ -90,29 +90,22 @@ let clientDistPath = clientDistCandidates.find((p) => fs.existsSync(p)) || clien
 console.log(`📁 Static files path resolved: ${clientDistPath}`);
 app.use(express.static(clientDistPath));
 
-app.get('*', (req, res, next) => {
-  if (req.url.startsWith('/api') || req.url.startsWith('/socket.io')) {
-    return next();
-  }
-
-  const indexPath = path.join(clientDistPath, 'index.html');
-  if (fs.existsSync(indexPath)) {
-    res.sendFile(indexPath);
-  } else {
-    res.json({
-      message: '🍕 ALFRIDO PIZZA Backend API is running live!',
-      status: 'active',
-      endpoints: {
-        health: '/api/health',
-        products: '/api/products',
-        categories: '/api/categories',
-        branches: '/api/branches',
-        offers: '/api/offers',
-        orders: '/api/orders',
-      },
-      note: 'The React Frontend is hosted in its separate repository and Vercel project.',
-    });
-  }
+// Root Landing Endpoint
+app.get('/', (_req, res) => {
+  res.json({
+    message: '🍕 ALFRIDO PIZZA Backend API is running live!',
+    status: 'active',
+    endpoints: {
+      health: '/api/health',
+      products: '/api/products',
+      categories: '/api/categories',
+      branches: '/api/branches',
+      offers: '/api/offers',
+      orders: '/api/orders',
+      seed: '/api/seed',
+    },
+    note: 'The React Frontend is hosted in its separate repository and Vercel project.',
+  });
 });
 
 const PORT = process.env.PORT || 5001;
