@@ -1,27 +1,12 @@
 import { PrismaClient } from '@prisma/client';
 
-function getSanitizedDbUrl(): string | undefined {
-  let url = process.env.DATABASE_URL;
-  if (!url) return undefined;
-  
-  url = url.trim();
-  // Strip outer quotes if present from env string
+// Sanitize process.env.DATABASE_URL directly before Prisma reads it
+if (process.env.DATABASE_URL) {
+  let url = process.env.DATABASE_URL.trim();
   if ((url.startsWith('"') && url.endsWith('"')) || (url.startsWith("'") && url.endsWith("'"))) {
     url = url.substring(1, url.length - 1).trim();
   }
-  return url;
+  process.env.DATABASE_URL = url;
 }
 
-const dbUrl = getSanitizedDbUrl();
-
-export const prisma = new PrismaClient(
-  dbUrl
-    ? {
-        datasources: {
-          db: {
-            url: dbUrl,
-          },
-        },
-      }
-    : undefined
-);
+export const prisma = new PrismaClient();
