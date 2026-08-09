@@ -2,9 +2,9 @@ import { prisma } from './db';
 import bcrypt from 'bcryptjs';
 
 export async function runSeed() {
-  console.log('🌱 Starting ALFRIDO PIZZA Database Seed...');
+  console.log('🌱 Starting ALFRIDO PIZZA Database Seed (Idempotent Mode)...');
 
-  // Ensure tables exist in PostgreSQL
+  // Ensure tables exist in PostgreSQL safely
   const tablesDDL = [
     `CREATE TABLE IF NOT EXISTS "Branch" ("id" TEXT PRIMARY KEY, "name" TEXT NOT NULL, "slug" TEXT UNIQUE NOT NULL, "address" TEXT NOT NULL, "phone" TEXT NOT NULL, "isOpen" BOOLEAN DEFAULT true, "deliveryFee" DOUBLE PRECISION DEFAULT 40.0, "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`,
     `CREATE TABLE IF NOT EXISTS "User" ("id" TEXT PRIMARY KEY, "email" TEXT UNIQUE NOT NULL, "passwordHash" TEXT NOT NULL, "name" TEXT NOT NULL, "role" TEXT DEFAULT 'CASHIER', "branchId" TEXT, "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`,
@@ -28,22 +28,17 @@ export async function runSeed() {
   }
   console.log('✅ Tables ensured in database');
 
-  // Clean existing database safely
-  try { await prisma.orderStatusHistory.deleteMany(); } catch (e) {}
-  try { await prisma.orderItemExtra.deleteMany(); } catch (e) {}
-  try { await prisma.orderItem.deleteMany(); } catch (e) {}
-  try { await prisma.order.deleteMany(); } catch (e) {}
-  try { await prisma.customer.deleteMany(); } catch (e) {}
-  try { await prisma.offer.deleteMany(); } catch (e) {}
-  try { await prisma.productExtra.deleteMany(); } catch (e) {}
-  try { await prisma.product.deleteMany(); } catch (e) {}
-  try { await prisma.category.deleteMany(); } catch (e) {}
-  try { await prisma.user.deleteMany(); } catch (e) {}
-  try { await prisma.branch.deleteMany(); } catch (e) {}
-
-  // 1. Create Branches
-  const smouhaBranch = await prisma.branch.create({
-    data: {
+  // 1. Upsert Branches
+  const smouhaBranch = await prisma.branch.upsert({
+    where: { slug: 'smouha' },
+    update: {
+      name: 'ALFRIDO PIZZA — SMOUHA',
+      address: '14 Victor Emanuel St, Smouha, Alexandria',
+      phone: '01200001042',
+      isOpen: true,
+      deliveryFee: 40.0,
+    },
+    create: {
       name: 'ALFRIDO PIZZA — SMOUHA',
       slug: 'smouha',
       address: '14 Victor Emanuel St, Smouha, Alexandria',
@@ -53,8 +48,16 @@ export async function runSeed() {
     },
   });
 
-  const miamiBranch = await prisma.branch.create({
-    data: {
+  const miamiBranch = await prisma.branch.upsert({
+    where: { slug: 'miami' },
+    update: {
+      name: 'ALFRIDO PIZZA — MIAMI',
+      address: '88 Khaled Ibn El Walid St, Miami, Alexandria',
+      phone: '01200001043',
+      isOpen: true,
+      deliveryFee: 40.0,
+    },
+    create: {
       name: 'ALFRIDO PIZZA — MIAMI',
       slug: 'miami',
       address: '88 Khaled Ibn El Walid St, Miami, Alexandria',
@@ -64,75 +67,69 @@ export async function runSeed() {
     },
   });
 
-  console.log('✅ Branches created');
+  console.log('✅ Branches upserted');
 
-  // 2. Create Users
+  // 2. Upsert Users
   const passwordHash = await bcrypt.hash('admin123', 10);
   const managerHash = await bcrypt.hash('manager123', 10);
   const kitchenHash = await bcrypt.hash('kitchen123', 10);
   const cashierHash = await bcrypt.hash('cashier123', 10);
 
-  await prisma.user.createMany({
-    data: [
-      {
-        email: 'admin@alfridopizza.com',
-        passwordHash,
-        name: 'Tarek Al-Sayed (Super Admin)',
-        role: 'SUPER_ADMIN',
-        branchId: smouhaBranch.id,
-      },
-      {
-        email: 'manager.smouha@alfridopizza.com',
-        passwordHash: managerHash,
-        name: 'Mostafa Hassan (Branch Manager)',
-        role: 'BRANCH_MANAGER',
-        branchId: smouhaBranch.id,
-      },
-      {
-        email: 'kitchen@alfridopizza.com',
-        passwordHash: kitchenHash,
-        name: 'Chef Mahmoud (Head Chef)',
-        role: 'KITCHEN_STAFF',
-        branchId: smouhaBranch.id,
-      },
-      {
-        email: 'cashier@alfridopizza.com',
-        passwordHash: cashierHash,
-        name: 'Sara Ahmed (Front Cashier)',
-        role: 'CASHIER',
-        branchId: smouhaBranch.id,
-      },
-    ],
+  const usersData = [
+    { email: 'admin@alfridopizza.com', passwordHash, name: 'Tarek Al-Sayed (Super Admin)', role: 'SUPER_ADMIN' },
+    { email: 'manager.smouha@alfridopizza.com', passwordHash: managerHash, name: 'Mostafa Hassan (Branch Manager)', role: 'BRANCH_MANAGER' },
+    { email: 'kitchen@alfridopizza.com', passwordHash: kitchenHash, name: 'Chef Mahmoud (Head Chef)', role: 'KITCHEN_STAFF' },
+    { email: 'cashier@alfridopizza.com', passwordHash: cashierHash, name: 'Sara Ahmed (Front Cashier)', role: 'CASHIER' },
+  ];
+
+  for (const u of usersData) {
+    await prisma.user.upsert({
+      where: { email: u.email },
+      update: { name: u.name, role: u.role, branchId: smouhaBranch.id },
+      create: { email: u.email, passwordHash: u.passwordHash, name: u.name, role: u.role, branchId: smouhaBranch.id },
+    });
+  }
+
+  console.log('✅ Demo Users upserted');
+
+  // 3. Upsert Categories
+  const catPizza = await prisma.category.upsert({
+    where: { slug: 'pizzas' },
+    update: { name: 'Pizzas', description: 'Artisanal Neapolitan & New York style pizzas', sortOrder: 1, icon: 'Pizza' },
+    create: { name: 'Pizzas', slug: 'pizzas', description: 'Artisanal Neapolitan & New York style pizzas', sortOrder: 1, icon: 'Pizza' },
   });
 
-  console.log('✅ Demo Users created');
-
-  // 3. Create Categories
-  const catPizza = await prisma.category.create({
-    data: { name: 'Pizzas', slug: 'pizzas', description: 'Artisanal Neapolitan & New York style pizzas', sortOrder: 1, icon: 'Pizza' },
+  const catBurgers = await prisma.category.upsert({
+    where: { slug: 'burgers' },
+    update: { name: 'Smash Burgers', description: 'Juicy double smashed prime beef burgers', sortOrder: 2, icon: 'Beef' },
+    create: { name: 'Smash Burgers', slug: 'burgers', description: 'Juicy double smashed prime beef burgers', sortOrder: 2, icon: 'Beef' },
   });
 
-  const catBurgers = await prisma.category.create({
-    data: { name: 'Smash Burgers', slug: 'burgers', description: 'Juicy double smashed prime beef burgers', sortOrder: 2, icon: 'Beef' },
+  const catSides = await prisma.category.upsert({
+    where: { slug: 'sides' },
+    update: { name: 'Sides & Dips', description: 'Crispy appetizers & homemade sauces', sortOrder: 3, icon: 'Fries' },
+    create: { name: 'Sides & Dips', slug: 'sides', description: 'Crispy appetizers & homemade sauces', sortOrder: 3, icon: 'Fries' },
   });
 
-  const catSides = await prisma.category.create({
-    data: { name: 'Sides & Dips', slug: 'sides', description: 'Crispy appetizers & homemade sauces', sortOrder: 3, icon: 'Fries' },
+  const catDrinks = await prisma.category.upsert({
+    where: { slug: 'drinks' },
+    update: { name: 'Drinks', description: 'Ice cold soft drinks & signature refreshers', sortOrder: 4, icon: 'CupSoda' },
+    create: { name: 'Drinks', slug: 'drinks', description: 'Ice cold soft drinks & signature refreshers', sortOrder: 4, icon: 'CupSoda' },
   });
 
-  const catDrinks = await prisma.category.create({
-    data: { name: 'Drinks', slug: 'drinks', description: 'Ice cold soft drinks & signature refreshers', sortOrder: 4, icon: 'CupSoda' },
+  const catDesserts = await prisma.category.upsert({
+    where: { slug: 'desserts' },
+    update: { name: 'Desserts', description: 'Decadent warm cakes & sweet calzones', sortOrder: 5, icon: 'Dessert' },
+    create: { name: 'Desserts', slug: 'desserts', description: 'Decadent warm cakes & sweet calzones', sortOrder: 5, icon: 'Dessert' },
   });
 
-  const catDesserts = await prisma.category.create({
-    data: { name: 'Desserts', slug: 'desserts', description: 'Decadent warm cakes & sweet calzones', sortOrder: 5, icon: 'Dessert' },
+  const catOffers = await prisma.category.upsert({
+    where: { slug: 'offers' },
+    update: { name: 'Special Offers', description: 'Exclusive value combos & discount deals', sortOrder: 6, icon: 'Sparkles' },
+    create: { name: 'Special Offers', slug: 'offers', description: 'Exclusive value combos & discount deals', sortOrder: 6, icon: 'Sparkles' },
   });
 
-  const catOffers = await prisma.category.create({
-    data: { name: 'Special Offers', slug: 'offers', description: 'Exclusive value combos & discount deals', sortOrder: 6, icon: 'Sparkles' },
-  });
-
-  console.log('✅ Categories created');
+  console.log('✅ Categories upserted');
 
   const pizzaSizes = JSON.stringify([
     { name: 'Small (9")', price: 190 },
@@ -140,7 +137,7 @@ export async function runSeed() {
     { name: 'Large (15")', price: 300 },
   ]);
 
-  // 4. Create Products
+  // 4. Upsert Products
   const productsData = [
     {
       name: 'Alfrido Margherita',
@@ -380,179 +377,146 @@ export async function runSeed() {
 
   for (const prod of productsData) {
     const { extras, ...prodInfo } = prod;
-    const createdProduct = await prisma.product.create({
-      data: prodInfo,
+    
+    const updatedProduct = await prisma.product.upsert({
+      where: { slug: prodInfo.slug },
+      update: {
+        name: prodInfo.name,
+        description: prodInfo.description,
+        price: prodInfo.price,
+        categoryId: prodInfo.categoryId,
+        image: prodInfo.image,
+        isFeatured: prodInfo.isFeatured,
+        isBestSeller: prodInfo.isBestSeller,
+        ingredients: prodInfo.ingredients,
+        sizesJson: prodInfo.sizesJson,
+      },
+      create: prodInfo,
     });
 
     if (extras && extras.length > 0) {
-      await prisma.productExtra.createMany({
-        data: extras.map((e) => ({
-          productId: createdProduct.id,
-          name: e.name,
-          price: e.price,
-        })),
-      });
+      for (const e of extras) {
+        const existingExtra = await prisma.productExtra.findFirst({
+          where: { productId: updatedProduct.id, name: e.name },
+        });
+        if (!existingExtra) {
+          await prisma.productExtra.create({
+            data: { productId: updatedProduct.id, name: e.name, price: e.price },
+          });
+        }
+      }
     }
   }
 
-  console.log('✅ Products & Extras created');
+  console.log('✅ Products & Extras upserted');
 
-  // 5. Create Offers
-  await prisma.offer.createMany({
-    data: [
-      {
-        title: 'Weekend Alfrido Deal',
-        code: 'WEEKEND599',
-        description: '2 Large Pizzas + 2 Fresh Drinks + 1 Loaded Fries',
-        price: 599.0,
-        originalPrice: 780.0,
-        image: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=800&q=80',
-        isActive: true,
-      },
-      {
-        title: 'Mega Family Bundle',
-        code: 'FAMILY749',
-        description: '3 Medium Pizzas + 2 Garlic Cheese Breads + 1L Pepsi',
-        price: 749.0,
-        originalPrice: 960.0,
-        image: 'https://images.unsplash.com/photo-1534308983496-4fabb1a015ee?auto=format&fit=crop&w=800&q=80',
-        isActive: true,
-      },
-      {
-        title: 'Duo Pizza Combo',
-        code: 'DUO450',
-        description: '2 Medium Pizzas of your choice + 2 Refreshers',
-        price: 450.0,
-        originalPrice: 550.0,
-        image: 'https://images.unsplash.com/photo-1628840042765-356cda07504e?auto=format&fit=crop&w=800&q=80',
-        isActive: true,
-      },
-    ],
-  });
-
-  console.log('✅ Offers created');
-
-  // 6. Create Demo Orders
-  const customer1 = await prisma.customer.create({
-    data: {
-      name: 'Ahmed Mansour',
-      phone: '01012345678',
-      governorate: 'Alexandria',
-      area: 'Smouha',
-      street: 'Fawzy Moatamed St',
-      building: 'Building 12',
-      floor: '4',
-      apartment: '42',
-      notes: 'Please ring doorbell and call upon arrival.',
+  // 5. Upsert Offers
+  const offersData = [
+    {
+      title: 'Weekend Alfrido Deal',
+      code: 'WEEKEND599',
+      description: '2 Large Pizzas + 2 Fresh Drinks + 1 Loaded Fries',
+      price: 599.0,
+      originalPrice: 780.0,
+      image: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=800&q=80',
+      isActive: true,
     },
-  });
-
-  const customer2 = await prisma.customer.create({
-    data: {
-      name: 'Nour El-Din',
-      phone: '01123456789',
-      governorate: 'Alexandria',
-      area: 'Rushdy',
-      street: 'Moasker El-Romany',
-      building: 'Tower 5',
-      floor: '7',
-      apartment: '71',
+    {
+      title: 'Mega Family Bundle',
+      code: 'FAMILY749',
+      description: '3 Medium Pizzas + 2 Garlic Cheese Breads + 1L Pepsi',
+      price: 749.0,
+      originalPrice: 960.0,
+      image: 'https://images.unsplash.com/photo-1534308983496-4fabb1a015ee?auto=format&fit=crop&w=800&q=80',
+      isActive: true,
     },
+    {
+      title: 'Duo Pizza Combo',
+      code: 'DUO450',
+      description: '2 Medium Pizzas of your choice + 2 Refreshers',
+      price: 450.0,
+      originalPrice: 550.0,
+      image: 'https://images.unsplash.com/photo-1628840042765-356cda07504e?auto=format&fit=crop&w=800&q=80',
+      isActive: true,
+    },
+  ];
+
+  for (const off of offersData) {
+    await prisma.offer.upsert({
+      where: { code: off.code },
+      update: off,
+      create: off,
+    });
+  }
+
+  console.log('✅ Offers upserted');
+
+  // 6. Create Demo Orders safely
+  const existingOrder1040 = await prisma.order.findUnique({
+    where: { orderNumber: '#ALFRIDO-1040' },
   });
 
-  // Order #ALFRIDO-1040 (PENDING)
-  await prisma.order.create({
-    data: {
-      orderNumber: '#ALFRIDO-1040',
-      trackingToken: 'token-demo-1040',
-      customerId: customer1.id,
-      branchId: smouhaBranch.id,
-      orderType: 'DELIVERY',
-      status: 'PENDING',
-      subtotal: 610.0,
-      deliveryFee: 40.0,
-      discount: 50.0,
-      totalAmount: 600.0,
-      paymentMethod: 'COD',
-      paymentStatus: 'PENDING',
-      items: {
-        create: [
-          {
-            productName: 'Alfrido Pepperoni',
-            size: 'Medium (12")',
-            unitPrice: 240,
-            quantity: 2,
-            totalPrice: 510,
-            notes: 'Extra crispy crust',
-            extras: {
-              create: [{ extraName: 'Extra Cheese', price: 30 }],
+  if (!existingOrder1040) {
+    let customer1 = await prisma.customer.findFirst({ where: { phone: '01012345678' } });
+    if (!customer1) {
+      customer1 = await prisma.customer.create({
+        data: {
+          name: 'Ahmed Mansour',
+          phone: '01012345678',
+          governorate: 'Alexandria',
+          area: 'Smouha',
+          street: 'Fawzy Moatamed St',
+          building: 'Building 12',
+          floor: '4',
+          apartment: '42',
+          notes: 'Please ring doorbell and call upon arrival.',
+        },
+      });
+    }
+
+    await prisma.order.create({
+      data: {
+        orderNumber: '#ALFRIDO-1040',
+        trackingToken: 'token-demo-1040',
+        customerId: customer1.id,
+        branchId: smouhaBranch.id,
+        orderType: 'DELIVERY',
+        status: 'PENDING',
+        subtotal: 610.0,
+        deliveryFee: 40.0,
+        discount: 50.0,
+        totalAmount: 600.0,
+        paymentMethod: 'COD',
+        paymentStatus: 'PENDING',
+        items: {
+          create: [
+            {
+              productName: 'Alfrido Pepperoni',
+              size: 'Medium (12")',
+              unitPrice: 240,
+              quantity: 2,
+              totalPrice: 510,
+              notes: 'Extra crispy crust',
+              extras: {
+                create: [{ extraName: 'Extra Cheese', price: 30 }],
+              },
             },
-          },
-          {
-            productName: 'Alfrido Loaded Fries',
-            size: null,
-            unitPrice: 95,
-            quantity: 1,
-            totalPrice: 95,
-          },
-        ],
-      },
-      statusHistory: {
-        create: [
-          { status: 'PENDING', note: 'Order placed by customer' },
-        ],
-      },
-    },
-  });
-
-  // Order #ALFRIDO-1041 (CONFIRMED)
-  await prisma.order.create({
-    data: {
-      orderNumber: '#ALFRIDO-1041',
-      trackingToken: 'token-demo-1041',
-      customerId: customer2.id,
-      branchId: smouhaBranch.id,
-      orderType: 'DELIVERY',
-      status: 'CONFIRMED',
-      subtotal: 450.0,
-      deliveryFee: 40.0,
-      discount: 0.0,
-      totalAmount: 490.0,
-      paymentMethod: 'ONLINE',
-      paymentStatus: 'PAID',
-      items: {
-        create: [
-          {
-            productName: 'Chicken Ranch Supreme',
-            size: 'Large (15")',
-            unitPrice: 310,
-            quantity: 1,
-            totalPrice: 340,
-            extras: {
-              create: [{ extraName: 'Extra Cheese', price: 30 }],
+            {
+              productName: 'Alfrido Loaded Fries',
+              size: null,
+              unitPrice: 95,
+              quantity: 1,
+              totalPrice: 95,
             },
-          },
-          {
-            productName: 'Alfrido Molten Lava Cake',
-            size: null,
-            unitPrice: 90,
-            quantity: 1,
-            totalPrice: 115,
-            extras: {
-              create: [{ extraName: 'Vanilla Ice Cream Scoop', price: 25 }],
-            },
-          },
-        ],
+          ],
+        },
+        statusHistory: {
+          create: [{ status: 'PENDING', note: 'Order placed by customer' }],
+        },
       },
-      statusHistory: {
-        create: [
-          { status: 'PENDING', note: 'Order received' },
-          { status: 'CONFIRMED', note: 'Branch accepted order', createdBy: 'Mostafa Hassan' },
-        ],
-      },
-    },
-  });
+    });
+  }
 
-  console.log('✅ Demo Orders seeded');
-  console.log('🎉 Database seeding complete!');
+  console.log('✅ Demo Orders checked/seeded');
+  console.log('🎉 Idempotent Database seed completed successfully!');
 }
