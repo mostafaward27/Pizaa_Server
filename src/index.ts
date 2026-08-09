@@ -48,15 +48,15 @@ app.use((req, _res, next) => {
 });
 
 // REST API Routes
-app.use('/api/products', productRoutes);
-app.use('/api/categories', categoryRoutes);
-app.use('/api/branches', branchRoutes);
-app.use('/api/offers', offerRoutes);
-app.use('/api/orders', orderRoutes);
-app.use('/api/admin', adminRoutes);
+app.use(['/api/products', '/products'], productRoutes);
+app.use(['/api/categories', '/categories'], categoryRoutes);
+app.use(['/api/branches', '/branches'], branchRoutes);
+app.use(['/api/offers', '/offers'], offerRoutes);
+app.use(['/api/orders', '/orders'], orderRoutes);
+app.use(['/api/admin', '/admin'], adminRoutes);
 
 // Health Check Endpoint
-app.get('/api/health', (_req, res) => {
+app.get(['/api/health', '/health'], (_req, res) => {
   res.json({
     status: 'ok',
     brand: 'ALFRIDO PIZZA Production API',
@@ -66,7 +66,7 @@ app.get('/api/health', (_req, res) => {
 });
 
 // One-click Database Seed Endpoint
-app.get('/api/seed', async (_req, res) => {
+app.get(['/api/seed', '/seed'], async (_req, res) => {
   try {
     const { runSeed } = await import('./seed');
     await runSeed();
