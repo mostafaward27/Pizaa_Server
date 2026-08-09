@@ -99,7 +99,19 @@ app.get('*', (req, res, next) => {
   if (fs.existsSync(indexPath)) {
     res.sendFile(indexPath);
   } else {
-    res.status(404).send('Client build index.html not found. Ensure npm run build in client has completed.');
+    res.json({
+      message: '🍕 ALFRIDO PIZZA Backend API is running live!',
+      status: 'active',
+      endpoints: {
+        health: '/api/health',
+        products: '/api/products',
+        categories: '/api/categories',
+        branches: '/api/branches',
+        offers: '/api/offers',
+        orders: '/api/orders',
+      },
+      note: 'The React Frontend is hosted in its separate repository and Vercel project.',
+    });
   }
 });
 
