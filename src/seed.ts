@@ -1,7 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from './db';
 import bcrypt from 'bcryptjs';
-
-const prisma = new PrismaClient();
 
 export async function runSeed() {
   console.log('🌱 Starting ALFRIDO PIZZA Database Seed...');
