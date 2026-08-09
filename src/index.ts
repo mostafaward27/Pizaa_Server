@@ -65,6 +65,18 @@ app.get('/api/health', (_req, res) => {
   });
 });
 
+// One-click Database Seed Endpoint
+app.get('/api/seed', async (_req, res) => {
+  try {
+    const { runSeed } = await import('./seed');
+    await runSeed();
+    res.json({ status: 'success', message: 'Database successfully seeded with demo products, categories, branches, offers, and orders!' });
+  } catch (error: any) {
+    console.error('API Seeding error:', error);
+    res.status(500).json({ error: 'Failed to seed database', details: error.message });
+  }
+});
+
 // Locate client build directory flexibly for production
 const clientDistCandidates = [
   path.resolve(process.cwd(), '../client/dist'),
