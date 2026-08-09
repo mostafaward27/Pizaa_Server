@@ -93,8 +93,13 @@ app.get('*', (req, res, next) => {
 
 const PORT = process.env.PORT || 5001;
 
-server.listen(PORT, () => {
-  console.log(`🚀 ALFRIDO PIZZA Production Server running on port ${PORT}`);
-  console.log(`📡 Realtime Socket.IO active`);
-  console.log(`🌐 Serving Client Web App from: ${clientDistPath}`);
-});
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+  server.listen(PORT, () => {
+    console.log(`🚀 ALFRIDO PIZZA Production Server running on port ${PORT}`);
+    console.log(`📡 Realtime Socket.IO active`);
+    console.log(`🌐 Serving Client Web App from: ${clientDistPath}`);
+  });
+}
+
+export default app;
+
