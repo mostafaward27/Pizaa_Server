@@ -1,0 +1,168 @@
+// Prisma Schema for ALFRIDO PIZZA Restaurant Ordering System
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         String   @default("CASHIER") // SUPER_ADMIN, BRANCH_MANAGER, KITCHEN_STAFF, CASHIER
+  branchId     String?
+  branch       Branch?  @relation(fields: [branchId], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Branch {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  address     String
+  phone       String
+  isOpen      Boolean  @default(true)
+  deliveryFee Float    @default(40.0)
+  users       User[]
+  orders      Order[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String
+  slug        String    @unique
+  description String?
+  sortOrder   Int       @default(0)
+  isActive    Boolean   @default(true)
+  icon        String?
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Product {
+  id           String         @id @default(uuid())
+  name         String
+  slug         String         @unique
+  description  String
+  price        Float
+  categoryId   String
+  category     Category       @relation(fields: [categoryId], references: [id])
+  image        String
+  isAvailable  Boolean        @default(true)
+  isFeatured   Boolean        @default(false)
+  isBestSeller Boolean        @default(false)
+  ingredients  String?
+  sizesJson    String?        // Stores array e.g. [{"name":"Small","price":200},{"name":"Medium","price":240},{"name":"Large","price":300}]
+  extras       ProductExtra[]
+  orderItems   OrderItem[]
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+}
+
+model ProductExtra {
+  id          String   @id @default(uuid())
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name        String
+  price       Float
+  isAvailable Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Offer {
+  id            String    @id @default(uuid())
+  title         String
+  code          String    @unique
+  description   String
+  price         Float
+  originalPrice Float
+  image         String
+  isActive      Boolean   @default(true)
+  validFrom     DateTime?
+  validTo       DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Customer {
+  id          String   @id @default(uuid())
+  name        String
+  phone       String
+  governorate String?
+  area        String?
+  street      String?
+  building    String?
+  floor       String?
+  apartment   String?
+  notes       String?
+  orders      Order[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Order {
+  id              String               @id @default(uuid())
+  orderNumber     String               @unique // e.g. #CHAO-1042
+  trackingToken   String               @unique @default(uuid())
+  customerId      String
+  customer        Customer             @relation(fields: [customerId], references: [id])
+  branchId        String
+  branch          Branch               @relation(fields: [branchId], references: [id])
+  orderType       String               @default("DELIVERY") // DELIVERY, PICKUP
+  status          String               @default("PENDING")  // PENDING, CONFIRMED, PREPARING, READY, COMPLETED, CANCELLED
+  rejectionReason String?
+  subtotal        Float
+  deliveryFee     Float                @default(40.0)
+  discount        Float                @default(0.0)
+  totalAmount     Float
+  paymentMethod   String               @default("COD")      // COD, ONLINE
+  paymentStatus   String               @default("PENDING")  // PENDING, PAID, FAILED, REFUNDED
+  items           OrderItem[]
+  statusHistory   OrderStatusHistory[]
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+}
+
+model OrderItem {
+  id          String           @id @default(uuid())
+  orderId     String
+  order       Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String?
+  product     Product?         @relation(fields: [productId], references: [id])
+  productName String
+  size        String?
+  unitPrice   Float
+  quantity    Int              @default(1)
+  totalPrice  Float
+  notes       String?
+  extras      OrderItemExtra[]
+  createdAt   DateTime         @default(now())
+}
+
+model OrderItemExtra {
+  id          String    @id @default(uuid())
+  orderItemId String
+  orderItem   OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  extraName   String
+  price       Float
+}
+
+model OrderStatusHistory {
+  id        String   @id @default(uuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status    String
+  note      String?
+  createdBy String?
+  createdAt DateTime @default(now())
+}
