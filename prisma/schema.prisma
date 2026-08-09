@@ -1,7 +1,7 @@
 // Prisma Schema for ALFRIDO PIZZA Restaurant Ordering System
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
