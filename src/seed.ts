@@ -7,24 +7,28 @@ export async function runSeed() {
   console.log('🌱 Starting ALFRIDO PIZZA Database Seed...');
 
   // Ensure tables exist in PostgreSQL
-  try {
-    await prisma.$executeRawUnsafe(`
-      CREATE TABLE IF NOT EXISTS "Branch" ("id" TEXT PRIMARY KEY, "name" TEXT NOT NULL, "slug" TEXT UNIQUE NOT NULL, "address" TEXT NOT NULL, "phone" TEXT NOT NULL, "isOpen" BOOLEAN DEFAULT true, "deliveryFee" DOUBLE PRECISION DEFAULT 40.0, "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
-      CREATE TABLE IF NOT EXISTS "User" ("id" TEXT PRIMARY KEY, "email" TEXT UNIQUE NOT NULL, "passwordHash" TEXT NOT NULL, "name" TEXT NOT NULL, "role" TEXT DEFAULT 'CASHIER', "branchId" TEXT, "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
-      CREATE TABLE IF NOT EXISTS "Category" ("id" TEXT PRIMARY KEY, "name" TEXT NOT NULL, "slug" TEXT UNIQUE NOT NULL, "description" TEXT, "sortOrder" INTEGER DEFAULT 0, "isActive" BOOLEAN DEFAULT true, "icon" TEXT, "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
-      CREATE TABLE IF NOT EXISTS "Product" ("id" TEXT PRIMARY KEY, "name" TEXT NOT NULL, "slug" TEXT UNIQUE NOT NULL, "description" TEXT NOT NULL, "price" DOUBLE PRECISION NOT NULL, "categoryId" TEXT NOT NULL, "image" TEXT NOT NULL, "isAvailable" BOOLEAN DEFAULT true, "isFeatured" BOOLEAN DEFAULT false, "isBestSeller" BOOLEAN DEFAULT false, "ingredients" TEXT, "sizesJson" TEXT, "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
-      CREATE TABLE IF NOT EXISTS "ProductExtra" ("id" TEXT PRIMARY KEY, "productId" TEXT NOT NULL, "name" TEXT NOT NULL, "price" DOUBLE PRECISION NOT NULL, "isAvailable" BOOLEAN DEFAULT true, "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
-      CREATE TABLE IF NOT EXISTS "Offer" ("id" TEXT PRIMARY KEY, "title" TEXT NOT NULL, "code" TEXT UNIQUE NOT NULL, "description" TEXT NOT NULL, "price" DOUBLE PRECISION NOT NULL, "originalPrice" DOUBLE PRECISION NOT NULL, "image" TEXT NOT NULL, "isActive" BOOLEAN DEFAULT true, "validFrom" TIMESTAMP, "validTo" TIMESTAMP, "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
-      CREATE TABLE IF NOT EXISTS "Customer" ("id" TEXT PRIMARY KEY, "name" TEXT NOT NULL, "phone" TEXT NOT NULL, "governorate" TEXT, "area" TEXT, "street" TEXT, "building" TEXT, "floor" TEXT, "apartment" TEXT, "notes" TEXT, "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
-      CREATE TABLE IF NOT EXISTS "Order" ("id" TEXT PRIMARY KEY, "orderNumber" TEXT UNIQUE NOT NULL, "trackingToken" TEXT UNIQUE NOT NULL, "customerId" TEXT NOT NULL, "branchId" TEXT NOT NULL, "orderType" TEXT DEFAULT 'DELIVERY', "status" TEXT DEFAULT 'PENDING', "rejectionReason" TEXT, "subtotal" DOUBLE PRECISION NOT NULL, "deliveryFee" DOUBLE PRECISION DEFAULT 40.0, "discount" DOUBLE PRECISION DEFAULT 0.0, "totalAmount" DOUBLE PRECISION NOT NULL, "paymentMethod" TEXT DEFAULT 'COD', "paymentStatus" TEXT DEFAULT 'PENDING', "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
-      CREATE TABLE IF NOT EXISTS "OrderItem" ("id" TEXT PRIMARY KEY, "orderId" TEXT NOT NULL, "productId" TEXT, "productName" TEXT NOT NULL, "size" TEXT, "unitPrice" DOUBLE PRECISION NOT NULL, "quantity" INTEGER DEFAULT 1, "totalPrice" DOUBLE PRECISION NOT NULL, "notes" TEXT, "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
-      CREATE TABLE IF NOT EXISTS "OrderItemExtra" ("id" TEXT PRIMARY KEY, "orderItemId" TEXT NOT NULL, "extraName" TEXT NOT NULL, "price" DOUBLE PRECISION NOT NULL);
-      CREATE TABLE IF NOT EXISTS "OrderStatusHistory" ("id" TEXT PRIMARY KEY, "orderId" TEXT NOT NULL, "status" TEXT NOT NULL, "note" TEXT, "createdBy" TEXT, "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
-    `);
-    console.log('✅ Tables ensured in database');
-  } catch (err: any) {
-    console.log('Table check note:', err.message);
+  const tablesDDL = [
+    `CREATE TABLE IF NOT EXISTS "Branch" ("id" TEXT PRIMARY KEY, "name" TEXT NOT NULL, "slug" TEXT UNIQUE NOT NULL, "address" TEXT NOT NULL, "phone" TEXT NOT NULL, "isOpen" BOOLEAN DEFAULT true, "deliveryFee" DOUBLE PRECISION DEFAULT 40.0, "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`,
+    `CREATE TABLE IF NOT EXISTS "User" ("id" TEXT PRIMARY KEY, "email" TEXT UNIQUE NOT NULL, "passwordHash" TEXT NOT NULL, "name" TEXT NOT NULL, "role" TEXT DEFAULT 'CASHIER', "branchId" TEXT, "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`,
+    `CREATE TABLE IF NOT EXISTS "Category" ("id" TEXT PRIMARY KEY, "name" TEXT NOT NULL, "slug" TEXT UNIQUE NOT NULL, "description" TEXT, "sortOrder" INTEGER DEFAULT 0, "isActive" BOOLEAN DEFAULT true, "icon" TEXT, "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`,
+    `CREATE TABLE IF NOT EXISTS "Product" ("id" TEXT PRIMARY KEY, "name" TEXT NOT NULL, "slug" TEXT UNIQUE NOT NULL, "description" TEXT NOT NULL, "price" DOUBLE PRECISION NOT NULL, "categoryId" TEXT NOT NULL, "image" TEXT NOT NULL, "isAvailable" BOOLEAN DEFAULT true, "isFeatured" BOOLEAN DEFAULT false, "isBestSeller" BOOLEAN DEFAULT false, "ingredients" TEXT, "sizesJson" TEXT, "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`,
+    `CREATE TABLE IF NOT EXISTS "ProductExtra" ("id" TEXT PRIMARY KEY, "productId" TEXT NOT NULL, "name" TEXT NOT NULL, "price" DOUBLE PRECISION NOT NULL, "isAvailable" BOOLEAN DEFAULT true, "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`,
+    `CREATE TABLE IF NOT EXISTS "Offer" ("id" TEXT PRIMARY KEY, "title" TEXT NOT NULL, "code" TEXT UNIQUE NOT NULL, "description" TEXT NOT NULL, "price" DOUBLE PRECISION NOT NULL, "originalPrice" DOUBLE PRECISION NOT NULL, "image" TEXT NOT NULL, "isActive" BOOLEAN DEFAULT true, "validFrom" TIMESTAMP, "validTo" TIMESTAMP, "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`,
+    `CREATE TABLE IF NOT EXISTS "Customer" ("id" TEXT PRIMARY KEY, "name" TEXT NOT NULL, "phone" TEXT NOT NULL, "governorate" TEXT, "area" TEXT, "street" TEXT, "building" TEXT, "floor" TEXT, "apartment" TEXT, "notes" TEXT, "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`,
+    `CREATE TABLE IF NOT EXISTS "Order" ("id" TEXT PRIMARY KEY, "orderNumber" TEXT UNIQUE NOT NULL, "trackingToken" TEXT UNIQUE NOT NULL, "customerId" TEXT NOT NULL, "branchId" TEXT NOT NULL, "orderType" TEXT DEFAULT 'DELIVERY', "status" TEXT DEFAULT 'PENDING', "rejectionReason" TEXT, "subtotal" DOUBLE PRECISION NOT NULL, "deliveryFee" DOUBLE PRECISION DEFAULT 40.0, "discount" DOUBLE PRECISION DEFAULT 0.0, "totalAmount" DOUBLE PRECISION NOT NULL, "paymentMethod" TEXT DEFAULT 'COD', "paymentStatus" TEXT DEFAULT 'PENDING', "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`,
+    `CREATE TABLE IF NOT EXISTS "OrderItem" ("id" TEXT PRIMARY KEY, "orderId" TEXT NOT NULL, "productId" TEXT, "productName" TEXT NOT NULL, "size" TEXT, "unitPrice" DOUBLE PRECISION NOT NULL, "quantity" INTEGER DEFAULT 1, "totalPrice" DOUBLE PRECISION NOT NULL, "notes" TEXT, "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`,
+    `CREATE TABLE IF NOT EXISTS "OrderItemExtra" ("id" TEXT PRIMARY KEY, "orderItemId" TEXT NOT NULL, "extraName" TEXT NOT NULL, "price" DOUBLE PRECISION NOT NULL);`,
+    `CREATE TABLE IF NOT EXISTS "OrderStatusHistory" ("id" TEXT PRIMARY KEY, "orderId" TEXT NOT NULL, "status" TEXT NOT NULL, "note" TEXT, "createdBy" TEXT, "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`
+  ];
+
+  for (const ddl of tablesDDL) {
+    try {
+      await prisma.$executeRawUnsafe(ddl);
+    } catch (err: any) {
+      console.log('DDL note:', err.message);
+    }
   }
+  console.log('✅ Tables ensured in database');
 
   // Clean existing database safely
   try { await prisma.orderStatusHistory.deleteMany(); } catch (e) {}
