@@ -4,7 +4,8 @@
   "description": "CHAO PIZZA backend server with Express, Prisma, and Socket.IO",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "prisma generate && tsc",
+    "postinstall": "prisma generate",
     "start": "node dist/index.js",
     "dev": "nodemon --watch src --ext ts --exec ts-node src/index.ts",
     "prisma:generate": "prisma generate",
